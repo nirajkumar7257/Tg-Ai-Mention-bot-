@@ -1,26 +1,36 @@
 {
-  "name": "Tg Ai Mention bot",
-  "description": "Telegram Group AI Mention and Mass Tagging Bot powered by Gemini AI.",
+  "name": "Tg Ai Mention Bot",
+  "description": "Telegram Group AI Mention and Mass Tagging Bot powered by Gemini AI. Tag all members or admins with custom styles and AI responses.",
   "repository": "https://github.com/nirajkumar7257/Tg-Ai-Mention-bot-",
-  "logo": "https://telegram.org",
-  "keywords": ["telegram", "bot", "ai", "gemini", "tagall", "mention"],
+  "logo": "https://telegram.org/img/t_logo.png",
+  "keywords": ["telegram", "bot", "ai", "gemini", "tagall", "mention", "group-management"],
   "env": {
     "TELEGRAM_TOKEN": {
-      "description": "BotFather se mila hua aapka Telegram Bot Token.",
+      "description": "🤖 BotFather se mila hua aapka Telegram Bot Token. (@BotFather par /newbot se milega)",
       "required": true
     },
     "GEMINI_API_KEY": {
-      "description": "Google AI Studio se mili hui free Gemini API Key.",
+      "description": "🧠 Google AI Studio se mili hui free Gemini API Key. (https://aistudio.google.com/app/apikey)",
       "required": true
     },
+    "OWNER_ID": {
+      "description": "👑 Aapka Telegram User ID (int format). Bot.py me comments dekhen ya @MissRose_bot par /id likhkar check karein.",
+      "required": true,
+      "value": "0"
+    },
     "HEROKU_APP_NAME": {
-      "description": "Jo app naam aap Heroku par rakh rahe hain (wahi same yahan likhein).",
+      "description": "🚀 Jo app naam aap Heroku par rakh rahe hain (wahi same yahan likhein). Example: my-telegram-bot",
       "required": true
     },
     "SUPPORT_LINK": {
-      "description": "Aapka Telegram Channel ya Support Group ka link (e.g., https://t.me).",
-      "required": true,
+      "description": "📢 Aapka Telegram Channel ya Support Group ka link. Example: https://t.me/yourgroup",
+      "required": false,
       "value": "https://t.me"
+    },
+    "PORT": {
+      "description": "🔌 Heroku server port (default: 8443). Usually don't change this.",
+      "required": false,
+      "value": "8443"
     }
   },
   "formation": {
@@ -28,5 +38,11 @@
       "quantity": 1,
       "size": "eco"
     }
-  }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "stack": "heroku-22"
 }
