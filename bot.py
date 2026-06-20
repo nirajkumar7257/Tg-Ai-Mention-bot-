@@ -79,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if chat_type == "private":
         keyboard = [
-            [InlineKeyboardButton("➕ Add to your group", url=f"https://t.me{bot_username}?startgroup=true")],
+            [InlineKeyboardButton("➕ Add to your group", url=f"https://t.me/{bot_username}?startgroup=true")],
             [
                 InlineKeyboardButton("❓ Help", callback_data="help_btn"),
                 InlineKeyboardButton("📢 Update Support", url=os.getenv("SUPPORT_LINK", "https://t.me"))
@@ -231,4 +231,47 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clean_prompt = user_text.replace(f"@{bot_username}", "").strip()
         if not clean_prompt: return
         try:
+            response = ai_client.models.generate_content(model="gemini-2.0-flash", contents=clean_prompt)
+            ai_reply = response.text
+            await update.message.reply_text(ai_reply, parse_mode="Markdown")
+        except Exception as e:
+            logging.error(f"Gemini API Error: {e}")
+            await update.message.reply_text("❌ AI se error aaya! Kripya baad mein kosis karein.")
+
+# All Command - Tag all users
+async def all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await tag_engine(update, context, target_admins_only=False)
+
+# Admin Command - Tag only admins
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await tag_engine(update, context, target_admins_only=True)
+
+# Main Application Setup
+async def main():
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
     
+    # Post Init Setup
+    application.post_init = post_init
+    
+    # Command Handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("all", all_command))
+    application.add_handler(CommandHandler("admin", admin_command))
+    application.add_handler(CommandHandler("stop", stop_command))
+    application.add_handler(CommandHandler("pause", pause_command))
+    application.add_handler(CommandHandler("resume", resume_command))
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(CommandHandler("stats", stats_command))
+    
+    # Callback Query Handler (For inline buttons)
+    application.add_handler(CallbackQueryHandler(button_click))
+    
+    # Message Handler
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_messages))
+    
+    # Start the bot
+    await application.run_polling()
+
+if __name__ == "__main__":
+    asyncio.run(main())
