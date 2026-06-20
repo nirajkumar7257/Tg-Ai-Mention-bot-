@@ -1,0 +1,119 @@
+# .gitignore for general projects (covers Python, Node, common editors/OS files)
+
+# --- Python ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+
+# Django stuff:
+*.log
+local_settings.py
+
+# --- Node ---
+node_modules/
+# dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# dotenv environment variables file
+.env
+.env.*.local
+.env.local
+
+# --- Editor/IDE ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Misc ---
+# Compiled source
+*.class
+*.jar
+
+# SQLite
+*.sqlite3
+
+# Certificates
+*.pem
+
+# Logs
+*.log
+
+# Coverage
+.coverage
+
+# Temporary files
+*.tmp
+*.temp
+
+# Secrets and credentials
+credentials
+secrets.yml
+
+# Local files created by development tools
+*.swp
+*~
+
+# JetBrains
+*.iml
+out/
+
+# Docker
+docker-compose.override.yml
+
+# VS Code workspace storage
+.vscode/*
+!.vscode/extensions.json
+
+# If you have other languages / tools, add them below
