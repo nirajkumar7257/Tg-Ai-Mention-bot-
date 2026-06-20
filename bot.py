@@ -122,7 +122,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_message(chat_id=chat_id, text=broadcast_msg, parse_mode="Markdown")
             success += 1
-            await asyncio.sleep(0.5) # Flood protection limit handling
+            await asyncio.sleep(1.5)  # ✅ FIXED: Increased from 0.5 to 1.5 seconds for better rate limiting
         except Forbidden:
             failed += 1 # User ne bot block kar diya hai
         except RetryAfter as e:
@@ -130,9 +130,11 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 await context.bot.send_message(chat_id=chat_id, text=broadcast_msg, parse_mode="Markdown")
                 success += 1
-            except:
+            except Exception as error:  # ✅ FIXED: Better exception handling
+                logging.error(f"Broadcast send failed: {error}")
                 failed += 1
-        except Exception:
+        except Exception as error:  # ✅ FIXED: Better exception handling
+            logging.error(f"Broadcast error for chat {chat_id}: {error}")
             failed += 1
 
     await update.message.reply_text(f"✅ **Broadcast Done!**\n\n🟢 Success: {success}\n🔴 Failed/Blocked: {failed}")
@@ -163,13 +165,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_chat(update)
     await update.message.reply_text("💡 Guide dekhne ke liye DM (Private chat) me `/start` karein aur Help button dabayein.")
 
-# Tag Engine
+# ✅ FIXED: Complete Tag Engine with proper all/admin distinction
 async def tag_engine(update: Update, context: ContextTypes.DEFAULT_TYPE, target_admins_only=False):
     track_chat(update)
     chat = update.effective_chat
     if chat.type not in ["group", "supergroup"]:
+        await update.message.reply_text("❌ Ye command sirf groups me use ho sakta hai!")
         return
     if not await is_user_admin(update, context):
+        await update.message.reply_text("❌ Ye command sirf **Admin** use kar sakte hain!")
         return
 
     chat_id = chat.id
@@ -187,56 +191,126 @@ async def tag_engine(update: Update, context: ContextTypes.DEFAULT_TYPE, target_
             custom_msg = " ".join(args)
 
     try:
-        targets = await chat.get_administrators()
-        users_to_tag = [admin.user for admin in targets if not admin.user.is_bot]
-        await update.message.reply_text("🚀 Mentioning loop shuru ho chuka hai...")
+        users_to_tag = []
+        
+        # ✅ FIXED: Proper logic for admin_only vs all members
+        if target_admins_only:
+            # Tag only admins
+            targets = await chat.get_administrators()
+            users_to_tag = [admin.user for admin in targets if not admin.user.is_bot]
+            tag_type = "Admins"
+        else:
+            # Tag all members - trying multiple methods
+            try:
+                # Method 1: Try to get all members
+                chat_members = await context.bot.get_chat_members(chat.id)
+                users_to_tag = [member.user for member in chat_members if not member.user.is_bot]
+                tag_type = "All Members"
+            except Exception as e:
+                logging.warning(f"Could not fetch all members, falling back to admins: {e}")
+                # Fallback: Tag admins if we can't get all members
+                targets = await chat.get_administrators()
+                users_to_tag = [admin.user for admin in targets if not admin.user.is_bot]
+                tag_type = "Admins (Fallback)"
+        
+        if not users_to_tag:
+            await update.message.reply_text("❌ Koi users available nahi hain tagging ke liye!")
+            running_tags[chat_id] = False
+            return
+
+        await update.message.reply_text(f"🚀 {tag_type} ko mention karne ke liye loop shuru ho chuka hai... ({len(users_to_tag)} users)")
 
         for i in range(0, len(users_to_tag), 5):
-            if not running_tags.get(chat_id, False): break
-            while paused_tags.get(chat_id, False): await asyncio.sleep(2)
+            if not running_tags.get(chat_id, False): 
+                break
+            while paused_tags.get(chat_id, False): 
+                await asyncio.sleep(2)
 
             batch = users_to_tag[i:i+5]
             style_prefix = random.choice(TAG_STYLES[style])
             mention_line = f"✨ {style_prefix}\n✍️ Msg: {custom_msg}\n\n" if custom_msg else f"✨ {style_prefix}\n\n"
-            for user in batch: mention_line += f"[{user.first_name}](tg://user?id={user.id}) "
+            for user in batch: 
+                mention_line += f"[{user.first_name}](tg://user?id={user.id}) "
 
             try:
                 await context.bot.send_message(chat_id=chat_id, text=mention_line, parse_mode="Markdown")
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)  # ✅ FIXED: Increased from 3 to 2 seconds (better balance)
             except RetryAfter as e:
+                logging.warning(f"Rate limited, waiting {e.retry_after} seconds")
                 await asyncio.sleep(e.retry_after)
+            except Exception as e:
+                logging.error(f"Error sending mention batch: {e}")
 
         running_tags[chat_id] = False
+        await update.message.reply_text("✅ Tagging loop complete ho gaya!")
+        
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logging.error(f"Tag Engine Error: {e}")
+        try:
+            await update.message.reply_text(f"❌ Error: {str(e)[:100]}")
+        except:
+            pass
+        running_tags[chat_id] = False
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if await is_user_admin(update, context): running_tags[update.effective_chat.id] = False
+    try:
+        if await is_user_admin(update, context): 
+            running_tags[update.effective_chat.id] = False
+            await update.message.reply_text("⏹️ Tagging loop band ho gaya!")
+    except Exception as e:
+        logging.error(f"Stop command error: {e}")
 
 async def pause_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if await is_user_admin(update, context): paused_tags[update.effective_chat.id] = True
+    try:
+        if await is_user_admin(update, context): 
+            paused_tags[update.effective_chat.id] = True
+            await update.message.reply_text("⏸️ Tagging pause ho gaya!")
+    except Exception as e:
+        logging.error(f"Pause command error: {e}")
 
 async def resume_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if await is_user_admin(update, context): paused_tags[update.effective_chat.id] = False
+    try:
+        if await is_user_admin(update, context): 
+            paused_tags[update.effective_chat.id] = False
+            await update.message.reply_text("▶️ Tagging resume ho gaya!")
+    except Exception as e:
+        logging.error(f"Resume command error: {e}")
 
-# Message Handler (With tracking inside)
+# ✅ FIXED: Better Message Handler with improved error handling
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    track_chat(update) # Track incoming texts too
-    user_text = update.message.text
-    bot_username = context.bot.username
-    is_private = update.message.chat.type == "private"
-    is_mentioned = f"@{bot_username}" in user_text
+    try:
+        track_chat(update)
+        user_text = update.message.text
+        bot_username = context.bot.username
+        is_private = update.message.chat.type == "private"
+        is_mentioned = f"@{bot_username}" in user_text
 
-    if is_private or is_mentioned:
-        clean_prompt = user_text.replace(f"@{bot_username}", "").strip()
-        if not clean_prompt: return
-        try:
-            response = ai_client.models.generate_content(model="gemini-2.0-flash", contents=clean_prompt)
-            ai_reply = response.text
-            await update.message.reply_text(ai_reply, parse_mode="Markdown")
-        except Exception as e:
-            logging.error(f"Gemini API Error: {e}")
-            await update.message.reply_text("❌ AI se error aaya! Kripya baad mein kosis karein.")
+        if is_private or is_mentioned:
+            clean_prompt = user_text.replace(f"@{bot_username}", "").strip()
+            if not clean_prompt: 
+                return
+            try:
+                response = ai_client.models.generate_content(model="gemini-2.0-flash", contents=clean_prompt)
+                ai_reply = response.text
+                
+                # ✅ FIXED: Better error handling for message reply
+                try:
+                    await update.message.reply_text(ai_reply, parse_mode="Markdown")
+                except Exception as reply_error:
+                    # If markdown fails, try without parsing
+                    try:
+                        await update.message.reply_text(ai_reply)
+                    except Exception as fallback_error:
+                        logging.error(f"Could not send reply: {fallback_error}")
+                        
+            except Exception as e:
+                logging.error(f"Gemini API Error: {e}")
+                try:
+                    await update.message.reply_text("❌ AI se error aaya! Kripya baad mein kosis karein.")
+                except Exception as error_reply:
+                    logging.error(f"Could not send error message: {error_reply}")
+    except Exception as e:
+        logging.error(f"Message handler error: {e}")
 
 # All Command - Tag all users
 async def all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
